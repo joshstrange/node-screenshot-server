@@ -1,5 +1,7 @@
 # Screenshot
 
+This is a NodeJS based version of the static-only version I previously created which can be found [here](https://github.com/joshstrange/screenshot)
+
 Simple Dropbox-powered screenshot single page site originally forked from [sammarks/screenshot](https://github.com/sammarks/screenshot). Note at this time this setup is dependent on you installing a OS X app called [UpShot](http://upshot.it/). If you have windows/linux this guide will not work for you unless you use different software. If anyone that uses either of these OSes for personal computing would like to provide instructions for either/both then I will accept your pull request.
 
 Example: [Screenshot of Github](http://s.joshstrange.com/VPmZ.png)
@@ -12,7 +14,7 @@ Example: [Screenshot of Github](http://s.joshstrange.com/VPmZ.png)
 Clone this repo
 
 ````
-git clone https://github.com/joshstrange/screenshot.git
+git clone https://github.com/joshstrange/node-screenshot-server.git
 ````
 
 cd into cloned repo
@@ -21,13 +23,18 @@ cd into cloned repo
 cd screenshot
 ````
 
-edit the index.html file with your public dropbox userId
+Run npm install
+````
+npm install
+````
+
+edit the index.js file with your public dropbox userId
 
 ````
-nano index.html
+nano index.js
 ````
 
-Near the top of the page you will see the following which you will replace with your public dropbox userId
+Near the top of the file you will see the following which you will replace with your public dropbox userId
 
 ````
 var userId = 2148004;
@@ -41,71 +48,101 @@ https://dl.dropboxusercontent.com/u/XXXXXXX/filename.png
 
 Where the `XXXXXXX` is your userId
 
+In the same file pick where you want to redirect users to if they visit your screenshot domain without a passing an image filename by editing the variable named:
+
+````
+var redirectRoot = 'http://joshstrange.com';
+````
+
 ### Step 2
 
-Setup your [S3](http://aws.amazon.com/s3) bucket. 
-
-* Login to your [AWS account management console](https://console.aws.amazon.com/console/home)
-* Go to the [S3 Page](https://console.aws.amazon.com/s3/home)
-* Click "Create bucket"
-* Name the bucket the same as the URL you want to put this on (ex: s.joshstrange.com). If you want to put this on the root then you will need to setup both a www.yourdomainname.com and yourdomain.com bucket covered [here](http://docs.aws.amazon.com/AmazonS3/latest/dev/website-hosting-custom-domain-walkthrough.html).
-* Click "Create"
-* Expand the "Permissions" section on your newly created bucket
-* Click "Add Bucket Policy"
-* Copy the following into the policy pop-up and edit it to your bucket name:
-
-````
-{
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Sid": "AddPerm",
-			"Effect": "Allow",
-			"Principal": {
-				"AWS": "*"
-			},
-			"Action": "s3:GetObject",
-			"Resource": "arn:aws:s3:::s.joshstrange.com/*"
-		}
-	]
-}
-````
-* Click "Save" then "Close"
-* Now expand the "Static Website Hosting" section
-* Click the radio box next to "Enable Website Hosting"
-* Set both the Index and Error document to "index.html"
-* Click "Save"
-* Now click on your bucket name on the left pane which will open your bucket
-* Click the "Upload" button and browse to where you cloned the repo and select the `index.html` file
-
+Install NodeJS and nginx on your server (instruction not included at this time).
 
 ### Step 3
 
-Setup your DNS.
+Create a new file in `/etc/nginx/sites-available` named 'screenshot'
+````
+sudo nano /etc/nginx/sites-available/screenshot
+````
 
-#### AWS Route 53
+and paste in the following
 
-* Go to the [Route 53 control panel](https://console.aws.amazon.com/route53/home)
-* Select your root domain name
-* Click "Go to Record Sets"
-* Click "Create Record Set"
-* Type in the name, in my previous example this would simply be "s"
-* Leave "Type" as "A - IPv4 address"
-* Select the "Yes" radio checkbox for "Alias"
-* Start typing the name of your S3 bucket and it should autocomplete it for you
-* Click "Create"
+````
+upstream screenshot {
+    server 127.0.0.1:19910;
+    keepalive 8;
+}
 
-#### Other DNS provider
+# the nginx server instance
+server {
+    listen 0.0.0.0:80;
+    server_name s.joshstrange.com;
+    access_log /var/log/nginx/screenshot.log;
 
-* Log into your DNS Provider
-* Navigate to the DNS settings for your domain
-* Add a new record of type "CNAME"
-* Fill out the "Name" box with your domain (ex: s.joshstrange.com)
-* Fill out the "Value" box with your domain name plus ".s3.amazonaws.com." (ex: s.joshstrange.com.s3.amazonaws.com.)
-* Save the Record/Zone
-* AWS provided guide for this is [here](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html#VirtualHostingCustomURLs)
+    # pass the request to the node.js server with the correct headers and much more can be added, see nginx config options
+    location / {
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-NginX-Proxy true;
 
-### Step 4 (OS X)
+      proxy_pass http://screenshot/;
+      proxy_redirect off;
+    }
+ }
+````
+
+Then link the file into your sites-enabled folder
+
+````
+ln -s /etc/nginx/sites-available/screenshot /etc/nginx/sites-enabled/screenshot
+````
+
+
+### Step 4
+
+Run `node index.js` in the directory you have this installed. You can put this in a screen if you want to keep it running after you've disconnected.
+
+### Optional
+
+Setup this up as a service
+
+````
+sudo nano /etc/init/screenshot.conf
+````
+
+Paste in the following editing as need
+
+````
+description "node.js screenshot server"
+author      "Josh Strange"
+
+# used to be: start on startup
+# until we found some mounts weren't ready yet while booting:
+start on started mountall
+stop on shutdown
+
+# Automatically Respawn:
+respawn
+respawn limit 99 5
+
+script
+    # Not sure why $HOME is needed, but we found that it is:
+    export HOME="/root"
+
+    exec /usr/local/bin/node /root/node-screenshot-server/index.js >> /var/log/screenshot.log 2>&1
+end script
+
+post-start script
+   # Optionally put a script here that will notifiy you node has (re)started
+   # /root/bin/hoptoad.sh "node.js has started!"
+end script
+````
+
+Now you can `sudo service screenshot start` and it will run in the background (it will also start at boot).
+
+
+### Step 5 (OS X)
 
 Install [UpShot](http://upshot.it/)
 
@@ -117,4 +154,3 @@ Install [UpShot](http://upshot.it/)
 * Enter your URL from before with "http://" and the trailing "/"
 * Hit the enter key to save your URL
 * Now when you take a screenshot UpShot will copy the URL into your Copy/Paste buffer for you to share
-

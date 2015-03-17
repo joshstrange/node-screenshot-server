@@ -1,0 +1,28 @@
+{
+  "name": "node-screenshot-server",
+  "version": "1.0.0",
+  "description": "NodeJS server for serving up html for Dropbox-backed screenshots",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joshstrange/node-screenshot-server.git"
+  },
+  "keywords": [
+    "screenshot",
+    "dropbox",
+    "node"
+  ],
+  "author": "Josh Strange",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joshstrange/node-screenshot-server/issues"
+  },
+  "homepage": "https://github.com/joshstrange/node-screenshot-server",
+  "dependencies": {
+    "express": "^4.12.2",
+    "ejs": "^1.0.0"
+  }
+}
