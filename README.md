@@ -1,3 +1,8 @@
+## Update
+
+I've since decided to stop using this because of issues with HipChat (No offence to them, it was bound to happen eventually. I was able to put in a work-around for Slack but I'd rather not keep chasing every client and there is no good reason to use node anymore) not in-lining my screenshots. I considered just setting up a cname record and making upshot append "/u/userId/Screenshot/" to the url but that would require breaking all previous links and making my links a little uglier. For now I've just added "rewrite ^(.*)$ https://dl.dropboxusercontent.com/u/2148004/Screenshots$1 break;" to the first line of the "location" block. If I come up with a more elegant solution than just redirecting (that doesn't require serving the images from the box) I'll update here.
+
+
 # Screenshot
 
 This is a NodeJS based version of the static-only version I previously created which can be found [here](https://github.com/joshstrange/screenshot)
