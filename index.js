@@ -12,7 +12,7 @@ app.get('/', function (req, res) {
 
 app.get('/:image', function (req, res) {
 	var imageUrl = 'https://dl.dropboxusercontent.com/u/' + userId + '/Screenshots/' + req.params.image + (req.params.image.indexOf('.png') === -1 ? '.png' : '');
-	if(req.headers.accept.indexOf('image/webp') === 0) {
+	if(req.headers.accept.indexOf('image/webp') === 0 || req.headers['user-agent'].indexOf('HipChat') !== -1) {
 		//If we are being asked for an image first and foremost send them to DB
 		res.redirect(imageUrl);
 	} else {
